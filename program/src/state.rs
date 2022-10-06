@@ -13,6 +13,7 @@ pub struct TokenSale {
     pub pool_token_account_pubkey: Pubkey,
     pub whitelist_map_pubkey: Pubkey,
     pub whitelist_program_pubkey: Pubkey,
+    pub vesting_program_pubkey:Pubkey,
     pub token_sale_amount: u64,
     pub usd_min_amount: u64,
     pub usd_max_amount: u64,
@@ -31,7 +32,7 @@ impl IsInitialized for TokenSale {
 }
 
 impl Pack for TokenSale {
-    const LEN: usize = 203;
+    const LEN: usize = 235;
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let src = array_ref![src, 0, TokenSale::LEN];
         let (
@@ -41,6 +42,7 @@ impl Pack for TokenSale {
             pool_token_account_pubkey,
             whitelist_map_pubkey,
             whitelist_program_pubkey,
+            vesting_program_pubkey,
             token_sale_amount,
             usd_min_amount,
             usd_max_amount,
@@ -48,7 +50,7 @@ impl Pack for TokenSale {
             token_sale_time,
             token_sale_paused,
             token_sale_ended,
-        ) = array_refs![src, 1, 32, 32, 32, 32, 32, 8, 8, 8, 8, 8, 1, 1];
+        ) = array_refs![src, 1, 32, 32, 32, 32, 32, 32, 8, 8, 8, 8, 8, 1, 1];
 
         Ok(TokenSale {
             is_initialized: match is_initialized {
@@ -61,6 +63,7 @@ impl Pack for TokenSale {
             pool_token_account_pubkey: Pubkey::new_from_array(*pool_token_account_pubkey),
             whitelist_map_pubkey: Pubkey::new_from_array(*whitelist_map_pubkey),
             whitelist_program_pubkey: Pubkey::new_from_array(*whitelist_program_pubkey),
+            vesting_program_pubkey: Pubkey::new_from_array(*vesting_program_pubkey),
             token_sale_amount: u64::from_le_bytes(*token_sale_amount),
             usd_min_amount: u64::from_le_bytes(*usd_min_amount),
             usd_max_amount: u64::from_le_bytes(*usd_max_amount),
@@ -88,6 +91,7 @@ impl Pack for TokenSale {
             pool_token_account_pubkey_dst,
             whitelist_map_pubkey_dst,
             whitelist_program_pubkey_dst,
+            vesting_program_pubkey_dst,
             token_sale_amount_dst,
             usd_min_amount_dst,
             usd_max_amount_dst,
@@ -95,7 +99,7 @@ impl Pack for TokenSale {
             token_sale_time_dst,
             token_sale_paused_dst,
             token_sale_ended_dst,
-        ) = mut_array_refs![dst, 1, 32, 32, 32, 32, 32, 8, 8, 8, 8, 8, 1, 1];
+        ) = mut_array_refs![dst, 1, 32, 32, 32, 32, 32, 32, 8, 8, 8, 8, 8, 1, 1];
 
         let TokenSale {
             is_initialized,
@@ -104,6 +108,7 @@ impl Pack for TokenSale {
             pool_token_account_pubkey,
             whitelist_map_pubkey,
             whitelist_program_pubkey,
+            vesting_program_pubkey,
             token_sale_amount,
             usd_min_amount,
             usd_max_amount,
@@ -119,6 +124,7 @@ impl Pack for TokenSale {
         pool_token_account_pubkey_dst.copy_from_slice(pool_token_account_pubkey.as_ref());
         whitelist_map_pubkey_dst.copy_from_slice(whitelist_map_pubkey.as_ref());
         whitelist_program_pubkey_dst.copy_from_slice(whitelist_program_pubkey.as_ref());
+        vesting_program_pubkey_dst.copy_from_slice(vesting_program_pubkey.as_ref());
         *token_sale_amount_dst = token_sale_amount.to_le_bytes();
         *usd_min_amount_dst = usd_min_amount.to_le_bytes();
         *usd_max_amount_dst = usd_max_amount.to_le_bytes();

@@ -105,6 +105,7 @@ impl Processor {
         let pool_usdt_account = next_account_info(account_info_iter)?;
         let token_sale_solr_account = next_account_info(account_info_iter)?;
         let token_whitelist_map = next_account_info(account_info_iter)?;
+        let vesting_program  = next_account_info(account_info_iter)?;
 
         let token_program = next_account_info(account_info_iter)?;
         if !spl_token::check_id(token_program.key) {
@@ -157,6 +158,7 @@ impl Processor {
         token_sale_state.pool_token_account_pubkey = *pool_usdt_account.key;
         token_sale_state.whitelist_map_pubkey = *token_whitelist_map.key;
         token_sale_state.whitelist_program_pubkey = *token_whitelist_program.key;
+        token_sale_state.vesting_program_pubkey = *vesting_program.key;
         token_sale_state.token_sale_amount = token_sale_amount;
         token_sale_state.usd_min_amount = usd_min_amount;
         token_sale_state.usd_max_amount = usd_max_amount;
