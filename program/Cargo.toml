@@ -2,8 +2,8 @@
 name = "solr-token-sale"
 version = "1.0.0"
 edition = "2018"
-description = "SolRazr Token Swap Program"
-repository = "https://github.com/solrazr-app/solr-token-sale"
+description = "AstrobBaies SolRazr Token Swap Program"
+repository = "https://github.com/DAO-VC/solr-token-sale.git"
 
 [features]
 no-entrypoint = []
@@ -13,9 +13,10 @@ solana-program = "1.6.6"
 thiserror = "1.0.21"
 spl-token = {version = "3.1", features = ["no-entrypoint"]}
 arrayref = "0.3.6"
-solr-token-whitelist = {version = "1.0.2", features = ["no-entrypoint"]}
+solr-token-whitelist = {path = "../../token-whitelist/program", version = "1.0.2", features = ["no-entrypoint"]}
 num-derive = "0.3"
 num-traits = "0.2"
+token-vesting = {path = "../../Bonfida-token-vesting/program", version = "0.1.0"}
 
 [lib]
 crate-type = ["cdylib", "lib"]

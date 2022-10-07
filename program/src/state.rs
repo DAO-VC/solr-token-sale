@@ -3,6 +3,7 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
+use token_vesting::instruction::Schedule as Schedule;
 
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 
@@ -19,6 +20,8 @@ pub struct TokenSale {
     pub usd_max_amount: u64,
     pub token_sale_price: u64,
     pub token_sale_time: u64,
+    pub vesting_periods: u64, // share of vested amount, opening for withdraw every month in, permilles (1/1000)
+    pub given_share_when_sale: u64, // share of tokens available for withdraw right after bought, in permilles (1/1000)
     pub token_sale_paused: bool,
     pub token_sale_ended: bool,
 }
@@ -32,7 +35,7 @@ impl IsInitialized for TokenSale {
 }
 
 impl Pack for TokenSale {
-    const LEN: usize = 235;
+    const LEN: usize = 251;
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let src = array_ref![src, 0, TokenSale::LEN];
         let (
@@ -48,9 +51,11 @@ impl Pack for TokenSale {
             usd_max_amount,
             token_sale_price,
             token_sale_time,
+            vesting_periods,
+            given_share_when_sale,
             token_sale_paused,
             token_sale_ended,
-        ) = array_refs![src, 1, 32, 32, 32, 32, 32, 32, 8, 8, 8, 8, 8, 1, 1];
+        ) = array_refs![src, 1, 32, 32, 32, 32, 32, 32, 8, 8, 8, 8, 8, 8, 8, 1, 1];
 
         Ok(TokenSale {
             is_initialized: match is_initialized {
@@ -69,6 +74,8 @@ impl Pack for TokenSale {
             usd_max_amount: u64::from_le_bytes(*usd_max_amount),
             token_sale_price: u64::from_le_bytes(*token_sale_price),
             token_sale_time: u64::from_le_bytes(*token_sale_time),
+            vesting_periods: u64::from_le_bytes(*vesting_periods),
+            given_share_when_sale: u64::from_le_bytes(*vesting_periods),
             token_sale_paused: match token_sale_paused {
                 [0] => false,
                 [1] => true,
@@ -79,6 +86,7 @@ impl Pack for TokenSale {
                 [1] => true,
                 _ => return Err(ProgramError::InvalidAccountData),
             },
+ 
         })
     }
 
@@ -97,9 +105,11 @@ impl Pack for TokenSale {
             usd_max_amount_dst,
             token_sale_price_dst,
             token_sale_time_dst,
+            vesting_periods_dst,
+            given_share_when_sale_dst,
             token_sale_paused_dst,
             token_sale_ended_dst,
-        ) = mut_array_refs![dst, 1, 32, 32, 32, 32, 32, 32, 8, 8, 8, 8, 8, 1, 1];
+        ) = mut_array_refs![dst, 1, 32, 32, 32, 32, 32, 32, 8, 8, 8, 8, 8, 8, 8, 1, 1];
 
         let TokenSale {
             is_initialized,
@@ -114,6 +124,8 @@ impl Pack for TokenSale {
             usd_max_amount,
             token_sale_price,
             token_sale_time,
+            vesting_periods,
+            given_share_when_sale,
             token_sale_paused,
             token_sale_ended,
         } = self;
@@ -130,6 +142,8 @@ impl Pack for TokenSale {
         *usd_max_amount_dst = usd_max_amount.to_le_bytes();
         *token_sale_price_dst = token_sale_price.to_le_bytes();
         *token_sale_time_dst = token_sale_time.to_le_bytes();
+        *vesting_periods_dst = vesting_periods.to_le_bytes();
+        *given_share_when_sale_dst = given_share_when_sale.to_le_bytes();
         token_sale_paused_dst[0] = *token_sale_paused as u8;
         token_sale_ended_dst[0] = *token_sale_ended as u8;
     }

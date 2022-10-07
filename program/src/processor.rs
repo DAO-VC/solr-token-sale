@@ -14,6 +14,8 @@ use solana_program::{
 use spl_token::state::Account as TokenAccount;
 use solr_token_whitelist::state::TokenWhitelist as TokenWhitelist;
 use crate::{error::TokenSaleError, instruction::TokenSaleInstruction, state::TokenSale};
+use token_vesting::instruction::create as VestingCreate;
+use token_vesting::instruction::Schedule as Schedule;
 
 pub struct Processor;
 impl Processor {
@@ -241,6 +243,21 @@ impl Processor {
         Ok(())
     }
 
+    fn vest_schedule (
+        vesting_periods: u64,
+        given_share_when_sale: u64,
+        token_sale_amount: u64,        
+        )  -> Vec <Schedule> {
+            let sec_in_month:u64  = 5; //TODO -> change  for prod to  2629800; !!!// 24 * 60 * 60 * 365.25 / 12; //seconds in average month
+            let mut schd: Vec<Schedule> = Vec::new();
+            schd.push (Schedule{ release_time: 0, amount: token_sale_amount * given_share_when_sale  / 1000});
+            for i in 0..vesting_periods {
+                schd.push (Schedule{ release_time: sec_in_month * (i + 1) , amount: token_sale_amount * (1000 - given_share_when_sale) / 1000 / vesting_periods});
+            }
+
+            return  schd;
+        }
+
     /// Processes [ExecuteTokenSale](enum.TokenSaleInstruction.html) instruction
     fn process_execute_sale(
         accounts: &[AccountInfo],
@@ -385,16 +402,45 @@ impl Processor {
         )?;
 
         // Transfer SOLR to the user
-        msg!("Transfer SOLR to the user");
-        let (token_sale_program_address, _nonce) = Pubkey::find_program_address(&[b"solrsale"], program_id);
-        let transfer_solr_to_user_ix = spl_token::instruction::transfer(
+        msg!("Transfer ABtokens to the vesting");
+        let seed: &[u8;8] = b"solrsale"; 
+        let (token_sale_program_address, _nonce) = Pubkey::find_program_address(&[seed], program_id);
+        let transfer_solr_to_user_ix = VestingCreate(
+            &token_sale_state.vesting_program_pubkey,
+            token_sale_solr_account.key,
+            user_solr_account.key,
+            &token_sale_program_address,
+            &token_sale_program_address,
+            user_solr_account.key,
+            user_solr_account.key,
+            user_solr_account.key,
+            Processor::vest_schedule(
+                token_sale_state.vesting_periods,
+                token_sale_state.given_share_when_sale,
+                token_sale_state.token_sale_amount,
+            ), 
+            *seed, // : [u8; 32],
+        )?;
+        /*
+            vesting_program_id: &Pubkey,
+            token_program_id: &Pubkey,
+            vesting_account_key: &Pubkey,
+            vesting_token_account_key: &Pubkey,
+            source_token_account_owner_key: &Pubkey,
+            source_token_account_key: &Pubkey,
+            destination_token_account_key: &Pubkey,
+            mint_address: &Pubkey,
+            schedules: Vec<Schedule>,
+            seeds: [u8; 32],
+            
+                let transfer_solr_to_user_ix = VestingInstruction::instruction::transfer(
             token_program.key,
             token_sale_solr_account.key,
             user_solr_account.key,
             &token_sale_program_address,
             &[&token_sale_program_address],
             token_purchase_amount,
-        )?;
+        )?; */
         msg!(&(&token_sale_program_address).to_string());
         invoke_signed(
             &transfer_solr_to_user_ix,
