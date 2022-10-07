@@ -403,8 +403,9 @@ impl Processor {
 
         // Transfer SOLR to the user
         msg!("Transfer ABtokens to the vesting");
-        let seed: &[u8;8] = b"solrsale"; 
-        let (token_sale_program_address, _nonce) = Pubkey::find_program_address(&[seed], program_id);
+        let seed_sale: &[u8;8] = b"solrsale";
+        let seed_vest: [u8;32] = *b"solrsalesolrsalesolrsalesolrsale";
+        let (token_sale_program_address, _nonce) = Pubkey::find_program_address(&[seed_sale], program_id);
         let transfer_solr_to_user_ix = VestingCreate(
             &token_sale_state.vesting_program_pubkey,
             token_sale_solr_account.key,
@@ -419,7 +420,7 @@ impl Processor {
                 token_sale_state.given_share_when_sale,
                 token_sale_state.token_sale_amount,
             ), 
-            *seed, // : [u8; 32],
+            seed_vest, // : [u8; 32],
         )?;
         /*
             vesting_program_id: &Pubkey,

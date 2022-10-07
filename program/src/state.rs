@@ -3,7 +3,6 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
-use token_vesting::instruction::Schedule as Schedule;
 
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 
@@ -75,7 +74,7 @@ impl Pack for TokenSale {
             token_sale_price: u64::from_le_bytes(*token_sale_price),
             token_sale_time: u64::from_le_bytes(*token_sale_time),
             vesting_periods: u64::from_le_bytes(*vesting_periods),
-            given_share_when_sale: u64::from_le_bytes(*vesting_periods),
+            given_share_when_sale: u64::from_le_bytes(*given_share_when_sale),
             token_sale_paused: match token_sale_paused {
                 [0] => false,
                 [1] => true,
