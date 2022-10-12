@@ -36,10 +36,6 @@ Note down the public-key of the program once deployed (this is the token whiteli
 
 Update `TOKEN_WHITELIST_PROGRAM_ID` inside `js/client/pubkeys.js` with the public-key generated above
 
-## Setup Token Whitelist
-
-In order to run token sale program, you will need token whitelist to be created. You will find instructions here https://github.com/solrazr-app/solr-token-whitelist
-
 ## Running JS Client
 
 Before running the JS client, please ensure you completed the following steps

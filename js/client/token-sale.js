@@ -71,11 +71,14 @@ export const TOKEN_SALE_ACCOUNT_DATA_LAYOUT = BufferLayout.struct([
   Layout.publicKey("poolTokenAccountPubkey"),
   Layout.publicKey("whitelistMapPubkey"),
   Layout.publicKey("whitelistProgramPubkey"),
+  Layout.publicKey("vestingProgramPubkey"),
   Layout.uint64("tokenSaleAmount"),
   Layout.uint64("minAmount"),
   Layout.uint64("maxAmount"),
   Layout.uint64("tokenSalePrice"),
   Layout.uint64("tokenSaleTime"),
+  Layout.uint64("vestingPeriods"),
+  Layout.uint64("givenShareWhenSale"),
   BufferLayout.u8("tokenSalePaused"),
   BufferLayout.u8("tokenSaleEnded"),
 ]);
@@ -87,11 +90,14 @@ export interface TokenSaleLayout {
   poolTokenAccountPubkey: Uint8Array,
   whitelistMapPubkey: Uint8Array,
   whitelistProgramPubkey: Uint8Array,
+  vestingProgramPubkey: Uint8Array,
   tokenSaleAmount: Uint8Array,
   minAmount: Uint8Array,
   maxAmount: Uint8Array,
   tokenSalePrice: Uint8Array,
   tokenSaleTime: Uint8Array,
+  vestingPeriods: Uint8Array,
+  givenShareWhenSale: Uint8Array,
   tokenSalePaused: number,
   tokenSaleEnded: number,
 }
@@ -130,6 +136,8 @@ export class TokenSale {
    */
   tokenWhitelistMap: PublicKey;
 
+
+
   /**
    * Program Identifier for the Token Sale program
    */
@@ -139,6 +147,8 @@ export class TokenSale {
    * Program Identifier for the Token Whitelist program
    */
   tokenWhitelistProgramId: PublicKey;
+
+  vestingProgramID: PublicKey;
 
   /**
    * Program Identifier for the Token program
@@ -173,6 +183,7 @@ export class TokenSale {
     tokenWhitelistMap: PublicKey,
     tokenSaleProgramId: PublicKey,
     tokenWhitelistProgramId: PublicKey,
+    vestingProgramID: PublicKey,
     tokenProgramId: PublicKey,
     associatedProgramId: PublicKey,
   ) {
@@ -185,6 +196,7 @@ export class TokenSale {
       tokenWhitelistMap,
       tokenSaleProgramId,
       tokenWhitelistProgramId,
+      vestingProgramID,
       tokenProgramId,
       associatedProgramId,
     });
@@ -200,6 +212,7 @@ export class TokenSale {
    * @param tokenWhitelistMap Publickey of the account storing token whitelist map
    * @param tokenSaleProgramId The program ID of the token-sale program
    * @param tokenWhitelistProgramId The program ID of the token-sale program
+   * @param vestingProgramID The ProgramID of vesting program  
    * @param tokenProgramId The program ID of the token program
    * @param associatedProgramId The program ID of the associated token account program
    * @return Token object for the newly minted token, Public key of the account holding the total supply of new tokens
@@ -212,6 +225,7 @@ export class TokenSale {
     tokenWhitelistMap: PublicKey,
     tokenSaleProgramId: PublicKey,
     tokenWhitelistProgramId: PublicKey,
+    vestingProgramID: PublicKey,
     tokenProgramId: PublicKey,
     associatedProgramId: PublicKey,
   ): Promise<TokenSale> {
@@ -225,6 +239,7 @@ export class TokenSale {
       tokenWhitelistMap,
       tokenSaleProgramId,
       tokenWhitelistProgramId,
+      vestingProgramID,
       tokenProgramId,
       associatedProgramId,
     );
@@ -283,6 +298,7 @@ export class TokenSale {
           saleTokenAccount,
           this.tokenProgramId,
           this.tokenWhitelistProgramId,
+          this.vestingProgramID,
           this.tokenWhitelistMap,
         ),
       ),
@@ -305,6 +321,7 @@ export class TokenSale {
     saleTokenAccount: PublicKey,
     tokenProgramId: PublicKey,
     tokenWhitelistProgramId: PublicKey,
+    vestingProgramID: PublicKey,
     tokenWhitelistMap: PublicKey,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
@@ -332,7 +349,7 @@ export class TokenSale {
       },
       data,
     );
-
+// decoded at  program/src/processor.rs:100
     const keys = [
       {pubkey: poolTransferAuthority, isSigner: true, isWritable: false},
       {pubkey: tokenSaleAccount, isSigner: false, isWritable: true},
@@ -340,6 +357,7 @@ export class TokenSale {
       {pubkey: saleTokenAccount, isSigner: false, isWritable: true},
       {pubkey: tokenWhitelistMap, isSigner: false, isWritable: false},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
+      {pubkey: vestingProgramID, isSigner: false, isWritable: false},
       {pubkey: tokenWhitelistProgramId, isSigner: false, isWritable: false},
       {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
     ];
@@ -460,6 +478,7 @@ export class TokenSale {
           this.tokenProgramId,
           saleProgramDerivedAddress[0],
           this.tokenWhitelistProgramId,
+          this.vestingProgramID,
           this.tokenWhitelistMap,
           tokenWhitelistAccount,
         ),
@@ -480,6 +499,7 @@ export class TokenSale {
     tokenProgramId: PublicKey,
     salePDA: PublicKey,
     tokenWhitelistProgramId: PublicKey,
+    vestingProgramID, PublicKey,
     tokenWhitelistMap: PublicKey,
     tokenWhitelistAccount: PublicKey,
   ): TransactionInstruction {
@@ -507,8 +527,9 @@ export class TokenSale {
       {pubkey: salePDA, isSigner: false, isWritable: false},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
       {pubkey: tokenWhitelistMap, isSigner: false, isWritable: true},
-      {pubkey: tokenWhitelistAccount, isSigner: false, isWritable: true},
+      {pubkey: tokenWhitelistAccount, isSigner: false, isWritable: true},  
       {pubkey: tokenWhitelistProgramId, isSigner: false, isWritable: false},
+      {pubkey: vestingProgramID, isSigner: false, isWritable: false},
     ];
     return new TransactionInstruction({
       keys,

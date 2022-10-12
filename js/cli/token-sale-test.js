@@ -25,6 +25,7 @@ import {
   ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID,
   TOKEN_SALE_PROGRAM_ID,
   TOKEN_WHITELIST_PROGRAM_ID,
+  VESTING_PROGRAM_ID,
   tokenWhitelistMap,
 } from '../client/pubkeys';
 
@@ -56,6 +57,8 @@ const USD_MAX_AMOUNT = 500*DECIMAL_MULTIPLIER;
 const FUND_AMOUNT = 1000000*DECIMAL_MULTIPLIER;
 const PURCHASE_AMOUNT = 250*DECIMAL_MULTIPLIER;
 const SALE_PRICE = 0.1;
+const VESTING_PERIODS = 22
+const GIVEN_SHARE_WHEN_SALE = 80
 const SALE_TIMESTAMP = Math.floor(Date.now()/1000) + 30; // setting sale time to 30secs from now...
 
 function assert(condition, message) {
@@ -78,7 +81,7 @@ async function getConnection(): Promise<Connection> {
 
 export async function InitTokenSale(): Promise<void> {
   const connection = await getConnection();
-  const payer = await newAccountWithLamports(connection, 1000000000);
+  const payer = await newAccountWithLamports(connection, 10000000000);
   mintAuthority = payer;
   ownerPool = payer;
 
@@ -118,6 +121,7 @@ export async function InitTokenSale(): Promise<void> {
     tokenWhitelistMap,
     TOKEN_SALE_PROGRAM_ID,
     TOKEN_WHITELIST_PROGRAM_ID,
+    VESTING_PROGRAM_ID,
     TOKEN_PROGRAM_ID,
     ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID,
   );
@@ -129,10 +133,12 @@ export async function InitTokenSale(): Promise<void> {
   assert(tokenSale.tokenSaleProgramId.toString() == TOKEN_SALE_PROGRAM_ID.toString());
   assert(tokenSale.tokenWhitelistProgramId.toString() == TOKEN_WHITELIST_PROGRAM_ID.toString());
   assert(tokenSale.tokenProgramId.toString() == TOKEN_PROGRAM_ID.toString());
-  assert(tokenSale.associatedProgramId.toString() == ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID.toString());
+  assert(tokenSale.vestingProgramID.toString() == VESTING_PROGRAM_ID.toString());
+  // assert(tokenSale.associatedProgramId.toString() == ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID.toString());
+
 
   console.log('Init Sale');
-  await tokenSale.initTokenSale(
+   await tokenSale.initTokenSale(
     ownerPool,
     poolTokenAccountUSDT,
     saleTokenAccountSOLR,
@@ -141,6 +147,8 @@ export async function InitTokenSale(): Promise<void> {
     USD_MAX_AMOUNT,
     SALE_PRICE,
     SALE_TIMESTAMP,
+    VESTING_PERIODS,
+    GIVEN_SHARE_WHEN_SALE
   );
 
   await sleep(500);
@@ -224,7 +232,7 @@ export async function ExecuteTokenSale(): Promise<void> {
   let poolUSDTBalance = (await mintUSDT.getAccountInfo(poolTokenAccountUSDT)).amount.toNumber();
   assert(poolUSDTBalance == PURCHASE_AMOUNT);
   let userSOLRBalance = (await mintSOLR.getAccountInfo(userTokenAccountSOLR)).amount.toNumber();
-  assert(userSOLRBalance == (PURCHASE_AMOUNT/SALE_PRICE);
+  assert(userSOLRBalance == (PURCHASE_AMOUNT/SALE_PRICE));
   let poolSOLRBalance = (await mintSOLR.getAccountInfo(saleTokenAccountSOLR)).amount.toNumber();
   assert(poolSOLRBalance == (mintAmountUSDT - (PURCHASE_AMOUNT/SALE_PRICE)));
 }

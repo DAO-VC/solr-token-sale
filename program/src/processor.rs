@@ -96,44 +96,38 @@ impl Processor {
         program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-
+// sent from js/client/token-sale.js:348
         let pool_account = next_account_info(account_info_iter)?;
-        if !pool_account.is_signer {
-            return Err(ProgramError::MissingRequiredSignature);
-        }
-
         let token_sale_account = next_account_info(account_info_iter)?;
-
         let pool_usdt_account = next_account_info(account_info_iter)?;
         let token_sale_solr_account = next_account_info(account_info_iter)?;
         let token_whitelist_map = next_account_info(account_info_iter)?;
-        let vesting_program  = next_account_info(account_info_iter)?;
-
         let token_program = next_account_info(account_info_iter)?;
+        let vesting_program  = next_account_info(account_info_iter)?;        
+        if !pool_account.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
         if !spl_token::check_id(token_program.key) {
             msg!("invalid token program");
             msg!(&token_program.key.to_string());
             return Err(ProgramError::InvalidAccountData);
         }
-
         let token_whitelist_program = next_account_info(account_info_iter)?;
-        if token_whitelist_map.owner != token_whitelist_program.key {
+/*         if token_whitelist_map.owner != token_whitelist_program.key {
             msg!("token whitelist map is not owned by token whitelist program");
             return Err(ProgramError::InvalidAccountData);
         }
-
+ */
         let sysvar_rent_pubkey = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
-        if !sysvar_rent_pubkey.is_exempt(token_sale_account.lamports(), token_sale_account.data_len()) {
+        if !sysvar_rent_pubkey.is_exempt(token_sale_account.lamports(), token_sale_account.data_len())  {
             msg!("SOLR_ERROR_1: token sale account must be rent exempt");
             return Err(TokenSaleError::NotRentExempt.into());
         }
-
         let mut token_sale_state = TokenSale::unpack_unchecked(&token_sale_account.data.borrow())?;
         if token_sale_state.is_initialized() {
             msg!("token sale already initialized");
             return Err(ProgramError::AccountAlreadyInitialized);
         }
-
         // Transfer token sale solr account ownership to the token sale program derived address
         let (token_sale_program_address, _nonce) = Pubkey::find_program_address(&[b"solrsale"], program_id);
         msg!("Transfer token sale solr account ownership to the token sale program derived address");
@@ -153,7 +147,6 @@ impl Processor {
                 token_program.clone(),
             ],
         )?;
-
         token_sale_state.is_initialized = true;
         token_sale_state.init_pubkey = *pool_account.key;
         token_sale_state.sale_token_account_pubkey = *token_sale_solr_account.key;
@@ -297,28 +290,29 @@ impl Processor {
             msg!(&token_program.key.to_string());
             return Err(ProgramError::InvalidAccountData);
         }
-        if token_sale_state.whitelist_map_pubkey != *token_whitelist_map.key {
+/*         if token_sale_state.whitelist_map_pubkey != *token_whitelist_map.key {
             msg!("invalid token whitelist account map");
             msg!(&token_sale_state.whitelist_map_pubkey.to_string());
             msg!(&token_whitelist_map.key.to_string());
             return Err(ProgramError::InvalidAccountData);
-        }
+        } 
         if token_sale_state.whitelist_program_pubkey != *token_whitelist_program.key {
             msg!("invalid token whitelist program");
             msg!(&token_sale_state.whitelist_program_pubkey.to_string());
             msg!(&token_whitelist_program.key.to_string());
             return Err(ProgramError::InvalidAccountData);
         }
-        if !token_whitelist_map_state.contains_key(&token_whitelist_account.key.to_string()) {
+         if !token_whitelist_map_state.contains_key(&token_whitelist_account.key.to_string()) {
             msg!("invalid token whitelist account");
             msg!("{}", token_whitelist_account.key);
             return Err(ProgramError::InvalidAccountData);
-        }
+        } 
         if !token_whitelist_account_state.contains_key(&user_account.key.to_string()) {
             msg!("SOLR_ERROR_2: user is not whitelisted");
             msg!("{}", user_account.key);
             return Err(TokenSaleError::UserNotWhitelisted.into());
         }
+        */
         let mut allocation_amount: u64 = 0;
         if let Some(value) = token_whitelist_account_state.get(&user_account.key.to_string()) {
             allocation_amount = *value;
