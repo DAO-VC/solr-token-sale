@@ -47,10 +47,11 @@ let poolTokenAccountSOLR: PublicKey;
 let saleTokenAccountSOLR: PublicKey;
 
 // Mint amounts
-let mintAmountUSDT = 100000;
-let mintAmountSOLR = 100000000;
-
 const DECIMAL_MULTIPLIER = 1000000;
+
+let mintAmountUSDT = 100000*DECIMAL_MULTIPLIER;
+let mintAmountSOLR = 100000000*DECIMAL_MULTIPLIER;
+
 const INIT_FUND_AMOUNT = 1000000*DECIMAL_MULTIPLIER;
 const USD_MIN_AMOUNT = 100*DECIMAL_MULTIPLIER;
 const USD_MAX_AMOUNT = 500*DECIMAL_MULTIPLIER;
@@ -212,7 +213,7 @@ export async function ExecuteTokenSale(): Promise<void> {
   userTokenAccountSOLR = await mintSOLR.createAccount(ownerUser.publicKey);
 
   // This needs to be updated with the token whitelist account
-  const tokenWhitelistAccount = new PublicKey('XXXX'); // generated from token whitelist program
+  const tokenWhitelistAccount = new PublicKey(TOKEN_WHITELIST_PROGRAM_ID); // generated from token whitelist program
 
   console.log('Execute Sale');
   await tokenSale.executeTokenSale(

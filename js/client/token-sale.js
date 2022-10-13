@@ -382,7 +382,7 @@ export class TokenSale {
     saleTokenAccount: PublicKey,
     amount: number | Numberu64,
   ): Promise<TransactionSignature> {
-    return await sendAndConfirmTransaction(
+     return await sendAndConfirmTransaction(
       'fundTokenSale',
       this.connection,
       new Transaction().add(
@@ -499,7 +499,7 @@ export class TokenSale {
     tokenProgramId: PublicKey,
     salePDA: PublicKey,
     tokenWhitelistProgramId: PublicKey,
-    vestingProgramID, PublicKey,
+    vestingProgramID: PublicKey,
     tokenWhitelistMap: PublicKey,
     tokenWhitelistAccount: PublicKey,
   ): TransactionInstruction {
@@ -516,7 +516,6 @@ export class TokenSale {
       },
       data,
     );
-
     const keys = [
       {pubkey: userAccount, isSigner: true, isWritable: false},
       {pubkey: tokenSaleAccount, isSigner: false, isWritable: false},
