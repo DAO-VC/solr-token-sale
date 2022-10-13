@@ -265,24 +265,25 @@ impl Processor {
         }
 
         let token_sale_account = next_account_info(account_info_iter)?;
-
         let token_sale_solr_account = next_account_info(account_info_iter)?;
-        let user_solr_account = next_account_info(account_info_iter)?;
 
+        let user_solr_account = next_account_info(account_info_iter)?;
         let user_usdt_account = next_account_info(account_info_iter)?;
         let pool_usdt_account = next_account_info(account_info_iter)?;
-
         let sale_pda = next_account_info(account_info_iter)?;
         let token_program = next_account_info(account_info_iter)?;
-
         let token_whitelist_map = next_account_info(account_info_iter)?;
         let token_whitelist_account = next_account_info(account_info_iter)?;
         let token_whitelist_program = next_account_info(account_info_iter)?;
         
         let token_sale_state = TokenSale::unpack(&token_sale_account.data.borrow())?;
         let token_sale_solr_account_info = TokenAccount::unpack(&token_sale_solr_account.data.borrow())?;
-        let mut token_whitelist_map_state = TokenWhitelist::unpack_from_slice(&token_whitelist_map.data.borrow())?;
-        let mut token_whitelist_account_state = TokenWhitelist::unpack_from_slice(&token_whitelist_account.data.borrow())?;
+
+/*         let mut token_whitelist_map_state = TokenWhitelist::unpack_from_slice(&token_whitelist_map.data.borrow())?;
+        msg!("token_whitelist_map_state parsed");
+ 
+        let mut token_whitelist_account_state = TokenWhitelist::unpack_from_slice(&token_whitelist_account.data.borrow())?; */
+        msg!("parsing ok, checks starts");
 
         // check if token sale is allowed
         if !spl_token::check_id(token_program.key) {
@@ -312,7 +313,7 @@ impl Processor {
             msg!("{}", user_account.key);
             return Err(TokenSaleError::UserNotWhitelisted.into());
         }
-        */
+        
         let mut allocation_amount: u64 = 0;
         if let Some(value) = token_whitelist_account_state.get(&user_account.key.to_string()) {
             allocation_amount = *value;
@@ -323,6 +324,7 @@ impl Processor {
             msg!("{}", allocation_amount);
             return Err(TokenSaleError::ExceedsAllocation.into());
         }
+        */
         let clock = Clock::get()?;
         if (clock.unix_timestamp as u64) < token_sale_state.token_sale_time {
             msg!("SOLR_ERROR_4: token sale has not started");
@@ -400,6 +402,23 @@ impl Processor {
         let seed_sale: &[u8;8] = b"solrsale";
         let seed_vest: [u8;32] = *b"solrsalesolrsalesolrsalesolrsale";
         let (token_sale_program_address, _nonce) = Pubkey::find_program_address(&[seed_sale], program_id);
+        msg!(      
+            "&token_sale_state.vesting_program_pubkey {},
+            token_sale_solr_account.key {},
+            user_solr_account.key {},
+            &token_sale_program_address {},
+            &token_sale_program_address {},
+            user_solr_account.key {},
+            user_solr_account.key {},
+            user_solr_account.key {},", 
+            &token_sale_state.vesting_program_pubkey,
+            token_sale_solr_account.key,
+            user_solr_account.key,
+            &token_sale_program_address,
+            &token_sale_program_address,
+            user_solr_account.key,
+            user_solr_account.key,
+            user_solr_account.key,);
         let transfer_solr_to_user_ix = VestingCreate(
             &token_sale_state.vesting_program_pubkey,
             token_sale_solr_account.key,

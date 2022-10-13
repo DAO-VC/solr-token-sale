@@ -60,7 +60,7 @@ const PURCHASE_AMOUNT = 250*DECIMAL_MULTIPLIER;
 const SALE_PRICE = 0.1;
 const VESTING_PERIODS = 22
 const GIVEN_SHARE_WHEN_SALE = 80
-const SALE_TIMESTAMP = Math.floor(Date.now()/1000) + 30; // setting sale time to 30secs from now...
+const SALE_TIMESTAMP = Math.floor(Date.now()/1000) + 20; // setting sale time to 30secs from now...
 
 function assert(condition, message) {
   if (!condition) {
@@ -226,7 +226,7 @@ export async function ExecuteTokenSale(): Promise<void> {
     PURCHASE_AMOUNT,
   );
 
-  await sleep(500);
+  await sleep(1000);
 
   let userUSDTBalance = (await mintUSDT.getAccountInfo(userTokenAccountUSDT)).amount.toNumber();
   assert(userUSDTBalance == (mintAmountUSDT - PURCHASE_AMOUNT));
