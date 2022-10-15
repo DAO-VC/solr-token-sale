@@ -29,8 +29,11 @@ import {
   tokenWhitelistMap,
 } from '../client/pubkeys';
 
+import {createInitInstruction} from "@bonfida/token-vesting";
+
 // Token sale
 let tokenSale: TokenSale;
+//let vesting: 
 // ownerPool of the pool accounts
 let ownerPool: Account;
 // ownerUser of the user accounts
@@ -61,6 +64,7 @@ const SALE_PRICE = 0.1;
 const VESTING_PERIODS = 22
 const GIVEN_SHARE_WHEN_SALE = 80
 const SALE_TIMESTAMP = Math.floor(Date.now()/1000) + 20; // setting sale time to 30secs from now...
+const systemProgramId = new PublicKey ("VestingbGKPFXCWuBvfkegQfZyiNwAJb9Ss623VQ5DA");
 
 function assert(condition, message) {
   if (!condition) {
@@ -151,6 +155,17 @@ export async function InitTokenSale(): Promise<void> {
     VESTING_PERIODS,
     GIVEN_SHARE_WHEN_SALE
   );
+
+  //init vesting
+  const vestingAccountKey =  await  PublicKey.findProgramAddress("wqerwqfcqerg", VESTING_PROGRAM_ID);
+   await  createInitInstruction(
+      systemProgramId, // systemProgramId: PublicKey,
+      VESTING_PROGRAM_ID,// vestingProgramId: PublicKey,
+      payer,// payerKey: PublicKey,
+      vestingAccountKey,// vestingAccountKey: PublicKey,
+      "wqerwqfcqerg",// seeds: Array<Buffer | Uint8Array>,
+      VESTING_PERIODS,// numberOfSchedules: number,
+    )
 
   await sleep(500);
 
