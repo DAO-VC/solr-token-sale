@@ -2,21 +2,25 @@
 name = "solr-token-sale"
 version = "1.0.0"
 edition = "2018"
-description = "AstrobBaies SolRazr Token Swap Program"
+description = "AstrobBabies SolRazr Token Swap Program"
 repository = "https://github.com/DAO-VC/solr-token-sale.git"
 
 [features]
 no-entrypoint = []
 
 [dependencies]
-solana-program = "1.14.5"
+solana-program = "1.10.41"
 thiserror = "1.0.21"
-spl-token = {version = "3.5.0", features = ["no-entrypoint"]}
+spl-token = {version = "3.3.1", features = ["no-entrypoint"]}
 arrayref = "0.3.6"
 solr-token-whitelist = {path = "../../token-whitelist/program", version = "1.0.2", features = ["no-entrypoint"]}
 num-derive = "0.3"
 num-traits = "0.2"
-token-vesting = {path = "../../Bonfida-token-vesting/program", version = "0.1.0", features = [ "no-entrypoint" ]}
+streamflow-timelock = "0.3.2"
+# token-vesting = {path = "../../vesting/program", version = "0.1.0", features = [ "no-entrypoint" ]}
+anchor-lang = "0.25.0"
+anchor-spl = "0.25.0"
+#streamflow-sdk = { path = "../../rust-sdk/programs/streamflow-sdk", features = ["cpi"]}
 
 [lib]
 crate-type = ["cdylib", "lib"]

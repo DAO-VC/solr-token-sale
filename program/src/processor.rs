@@ -12,10 +12,19 @@ use solana_program::{
     sysvar::{rent::Rent, clock::Clock, Sysvar},
 };
 use spl_token::state::Account as TokenAccount;
+use streamflow_timelock::state::InitializeAccounts as InitializeAccounts;
+use streamflow_timelock::state::TokenStreamData as TokenStreamData;
+use streamflow_timelock::state::StreamInstruction as StreamInstruction;
+
 use solr_token_whitelist::state::TokenWhitelist as TokenWhitelist;
 use crate::{error::TokenSaleError, instruction::TokenSaleInstruction, state::TokenSale};
-use token_vesting::instruction::create as VestingCreate;
-use token_vesting::instruction::Schedule as Schedule;
+// use token_vesting::instruction::create as VestingCreate;
+// use token_vesting::instruction::Schedule as Schedule;
+// use anchor_lang::prelude::*;
+// use streamflow_sdk::cpi::accounts::Create;
+// use streamflow_sdk::cpi;
+
+use streamflow_timelock::*;
 
 pub struct Processor;
 impl Processor {
@@ -236,7 +245,7 @@ impl Processor {
         Ok(())
     }
 
-    fn vest_schedule (
+/*     fn vest_schedule (
         vesting_periods: u64,
         given_share_when_sale: u64,
         token_sale_amount: u64,        
@@ -250,7 +259,7 @@ impl Processor {
 
             return  schd;
         }
-
+ */
     /// Processes [ExecuteTokenSale](enum.TokenSaleInstruction.html) instruction
     fn process_execute_sale(
         accounts: &[AccountInfo],
@@ -402,30 +411,50 @@ impl Processor {
         let seed_sale: &[u8;8] = b"solrsale";
         let seed_vest: [u8;32] = *b"solrsalesolrsalesolrsalesolrsale";
         let (token_sale_program_address, _nonce) = Pubkey::find_program_address(&[seed_sale], program_id);
-        msg!(      
-            "&token_sale_state.vesting_program_pubkey {},
-            token_sale_solr_account.key {},
-            user_solr_account.key {},
-            &token_sale_program_address {},
-            &token_sale_program_address {},
-            user_solr_account.key {},
-            user_solr_account.key {},
+        let (vesting_account, _nonce) = Pubkey::find_program_address(&[seed_sale],  &token_sale_state.vesting_program_pubkey);
+/*         msg!(      
+           "vesting_program_id - &token_sale_state.vesting_program_pubkey {},
+            token_program_id - token_sale_solr_account.key {},
+            vesting_token_account_key - user_solr_account.key {},
+            source_token_account_owner_key - &token_sale_program_address {},
+            source_token_account_key - &token_sale_program_address {},
+            destination_token_account_key - user_solr_account.key {},
+            mint_address - user_solr_account.key {},
             user_solr_account.key {},", 
             &token_sale_state.vesting_program_pubkey,
             token_sale_solr_account.key,
-            user_solr_account.key,
+            vesting_account,
             &token_sale_program_address,
             &token_sale_program_address,
             user_solr_account.key,
             user_solr_account.key,
-            user_solr_account.key,);
-        let transfer_solr_to_user_ix = VestingCreate(
+            user_solr_account.key,); */
+        let acc: InitializeAccounts = InitializeAccounts {
+            sender: *user_account,
+            sender_tokens: *token_sale_solr_account,
+            recipient: *user_account,
+            recipient_tokens: *user_solr_account,
+            
+        };
+        
+
+        let ix: StreamInstruction = StreamInstruction {
+            start_time: token_sale_state.token_sale_time,
+            end_time: token_sale_state.token_sale_time +  10 * 60 * 60 * 24 * 36525 / 12 / token_sale_state.vesting_periods,
+            deposited_amount: 0,
+            total_amount: usd_amount * token_sale_state.token_sale_price,
+            cliff: token_sale_state.token_sale_time, //no additional cliff period 
+            cliff_amount: token_sale_state.given_share_when_sale * usd_amount * token_sale_state.token_sale_price / 1000,
+
+        }
+        streamflow_timelock::token::create(program_id, acc, ix);
+/*         let transfer_solr_to_user_ix = VestingCreate(
             &token_sale_state.vesting_program_pubkey,
-            token_sale_solr_account.key,
-            user_solr_account.key,
+            token_program.key, 
+            &vesting_account,
+            &token_sale_program_address, // vesting_token_account_key
             &token_sale_program_address,
-            &token_sale_program_address,
-            user_solr_account.key,
+            user_solr_account.key, //?
             user_solr_account.key,
             user_solr_account.key,
             Processor::vest_schedule(
@@ -434,7 +463,7 @@ impl Processor {
                 token_sale_state.token_sale_amount,
             ), 
             seed_vest, // : [u8; 32],
-        )?;
+        )?; */
         /*
             vesting_program_id: &Pubkey,
             token_program_id: &Pubkey,

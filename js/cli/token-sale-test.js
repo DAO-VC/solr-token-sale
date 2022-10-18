@@ -155,15 +155,14 @@ export async function InitTokenSale(): Promise<void> {
     VESTING_PERIODS,
     GIVEN_SHARE_WHEN_SALE
   );
-
   //init vesting
-  const vestingAccountKey =  await  PublicKey.findProgramAddress("wqerwqfcqerg", VESTING_PROGRAM_ID);
+  const vestingAccountKey =  await  PublicKey.findProgramAddress([Buffer.from("solrsale")], VESTING_PROGRAM_ID);
    await  createInitInstruction(
       systemProgramId, // systemProgramId: PublicKey,
       VESTING_PROGRAM_ID,// vestingProgramId: PublicKey,
       payer,// payerKey: PublicKey,
       vestingAccountKey,// vestingAccountKey: PublicKey,
-      "wqerwqfcqerg",// seeds: Array<Buffer | Uint8Array>,
+      [Buffer.from("solrsale")],// seeds: Array<Buffer | Uint8Array>,
       VESTING_PERIODS,// numberOfSchedules: number,
     )
 
