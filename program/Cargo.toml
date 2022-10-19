@@ -1,7 +1,7 @@
 [package]
 name = "solr-token-sale"
 version = "1.0.0"
-edition = "2018"
+edition = "2021"
 description = "SolRazr Token Swap Program"
 repository = "https://github.com/solrazr-app/solr-token-sale"
 
@@ -9,9 +9,9 @@ repository = "https://github.com/solrazr-app/solr-token-sale"
 no-entrypoint = []
 
 [dependencies]
-solana-program = "1.6.6"
+solana-program = "1.14.5"
 thiserror = "1.0.21"
-spl-token = {version = "3.1", features = ["no-entrypoint"]}
+spl-token = {version = "3.5.0", features = ["no-entrypoint"]}
 arrayref = "0.3.6"
 solr-token-whitelist = {version = "1.0.2", features = ["no-entrypoint"]}
 num-derive = "0.3"
