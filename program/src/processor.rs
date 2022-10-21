@@ -1,20 +1,22 @@
+use crate::state::{pack_schedule_into_slice, unpack_schedule};
+use crate::{error::TokenSaleError, instruction::TokenSaleInstruction, state::TokenSale};
 use num_traits::FromPrimitive;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    msg,
-    instruction::{AccountMeta, Instruction},
-    program::{invoke, invoke_signed},
     decode_error::DecodeError,
+    entrypoint::ProgramResult,
+    instruction::{AccountMeta, Instruction},
+    msg,
+    program::{invoke, invoke_signed},
     program_error::{PrintProgramError, ProgramError},
     program_pack::{IsInitialized, Pack},
+    pubkey,
     pubkey::Pubkey,
-    sysvar::{rent::Rent, clock::Clock, Sysvar},
+    sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
+use solr_token_whitelist::state::TokenWhitelist;
 use spl_token::state::Account as TokenAccount;
-use solr_token_whitelist::state::TokenWhitelist as TokenWhitelist;
-use crate::{error::TokenSaleError, instruction::TokenSaleInstruction, state::TokenSale};
-use crate::state::{pack_schedule_into_slice, unpack_schedule};
+use token_vesting::instruction::Schedule;
 
 pub struct Processor;
 impl Processor {
@@ -142,7 +144,8 @@ impl Processor {
             return Err(TokenSaleError::NotRentExempt.into());
         }
 
-        let mut token_sale_state = TokenSale::unpack_unchecked(&token_sale_account.data.borrow()[..TokenSale::LEN])?;
+        let mut token_sale_state =
+            TokenSale::unpack_unchecked(&token_sale_account.data.borrow()[..TokenSale::LEN])?;
         if token_sale_state.is_initialized() {
             msg!("token sale already initialized");
             return Err(ProgramError::AccountAlreadyInitialized);
@@ -182,9 +185,15 @@ impl Processor {
         token_sale_state.initial_fraction = initial_fraction;
         token_sale_state.token_sale_paused = false;
         token_sale_state.token_sale_ended = false;
-        
-        TokenSale::pack(token_sale_state, &mut token_sale_account.data.borrow_mut()[..TokenSale::LEN])?;
-        pack_schedule_into_slice(release_schedule, &mut token_sale_account.data.borrow_mut()[TokenSale::LEN..])?;
+
+        TokenSale::pack(
+            token_sale_state,
+            &mut token_sale_account.data.borrow_mut()[..TokenSale::LEN],
+        )?;
+        pack_schedule_into_slice(
+            release_schedule,
+            &mut token_sale_account.data.borrow_mut()[TokenSale::LEN..],
+        )?;
 
         Ok(())
     }
@@ -216,8 +225,10 @@ impl Processor {
         }
 
         // check if token sale can be funded
-        let token_sale_state = TokenSale::unpack(&token_sale_account.data.borrow()[..TokenSale::LEN])?;
-        let token_sale_solr_account_info = TokenAccount::unpack(&token_sale_solr_account.data.borrow())?;
+        let token_sale_state =
+            TokenSale::unpack(&token_sale_account.data.borrow()[..TokenSale::LEN])?;
+        let token_sale_solr_account_info =
+            TokenAccount::unpack(&token_sale_solr_account.data.borrow())?;
         if !token_sale_state.is_initialized() {
             msg!("SOLR_ERROR_3: token sale needs to be initialized before funding");
             return Err(TokenSaleError::TokenSaleNotInit.into());
@@ -293,19 +304,46 @@ impl Processor {
         let vesting_token_account = next_account_info(account_info_iter)?;
         let vesting_program = next_account_info(account_info_iter)?;
 
-        let token_sale_state = TokenSale::unpack(&token_sale_account.data.borrow()[..TokenSale::LEN])?;
+        let token_sale_state =
+            TokenSale::unpack(&token_sale_account.data.borrow()[..TokenSale::LEN])?;
         let schedule = unpack_schedule(&token_sale_account.data.borrow()[TokenSale::LEN..])?;
 
-        let token_sale_solr_account_info = TokenAccount::unpack(&token_sale_solr_account.data.borrow())?;
-        let mut token_whitelist_map_state = TokenWhitelist::unpack_from_slice(&token_whitelist_map.data.borrow())?;
-        let mut token_whitelist_account_state = TokenWhitelist::unpack_from_slice(&token_whitelist_account.data.borrow())?;
+        let token_sale_solr_account_info =
+            TokenAccount::unpack(&token_sale_solr_account.data.borrow())?;
+        let mut token_whitelist_map_state =
+            TokenWhitelist::unpack_from_slice(&token_whitelist_map.data.borrow())?;
+        let mut token_whitelist_account_state =
+            TokenWhitelist::unpack_from_slice(&token_whitelist_account.data.borrow())?;
 
-        // check if token sale is allowed
         if !spl_token::check_id(token_program.key) {
             msg!("invalid token program");
             msg!(&token_program.key.to_string());
             return Err(ProgramError::InvalidAccountData);
         }
+
+        // check vesting program pubkey, other vesting accounts will be checked by the vesting program
+        if vesting_program.key != &pubkey!("CChTq6PthWU82YZkbveA3WDf7s97BWhBK4Vx9bmsT743") {
+            msg!("invalid vesting program");
+            msg!(&vesting_program.key.to_string());
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        let (vesting_seed, vesting_account_key) = Self::find_vesting_seed(
+            program_id,
+            user_account.key,
+            token_sale_account.key,
+            vesting_program.key,
+        );
+
+        if vesting_account.key != &vesting_account_key {
+            msg!("invalid vesting account");
+            msg!(
+                "vesting seed {}",
+                Pubkey::new_from_array(vesting_seed).to_string()
+            );
+            return Err(ProgramError::InvalidAccountData);
+        }
+
         if token_sale_state.whitelist_map_pubkey != *token_whitelist_map.key {
             msg!("invalid token whitelist account map");
             msg!(&token_sale_state.whitelist_map_pubkey.to_string());
@@ -410,28 +448,95 @@ impl Processor {
             ],
         )?;
 
-        // TODO: Create vesting and fund it with the tokens
-        // Transfer SOLR to the user
-        msg!("Transfer SOLR to the user");
-        let (token_sale_program_address, _nonce) = Pubkey::find_program_address(&[b"solrsale"], program_id);
-        let transfer_solr_to_user_ix = spl_token::instruction::transfer(
+        let number_of_vesting_schedules = schedule.len() as u64;
+        let advance_amount = (token_purchase_amount as u128
+            * token_sale_state.initial_fraction as u128
+            / 10000) as u64;
+        let remaining_portion_amount =
+            (token_purchase_amount - advance_amount) / number_of_vesting_schedules;
+        let advance_amount =
+            token_purchase_amount - remaining_portion_amount * number_of_vesting_schedules;
+        msg!(
+            "Advance: {}, remaining {} x {}",
+            advance_amount,
+            number_of_vesting_schedules,
+            remaining_portion_amount
+        );
+
+        let vesting_schedule: Vec<Schedule> = schedule
+            .iter()
+            .map(|&release_time| Schedule {
+                release_time,
+                amount: remaining_portion_amount,
+            })
+            .collect();
+
+        msg!("Transfer advance payment");
+        let (token_sale_program_address, bump) =
+            Pubkey::find_program_address(&[b"solrsale"], program_id);
+        let advance_payment_ix = spl_token::instruction::transfer(
             token_program.key,
             token_sale_solr_account.key,
             user_solr_account.key,
             &token_sale_program_address,
             &[&token_sale_program_address],
-            token_purchase_amount,
+            advance_amount,
         )?;
-        msg!(&(&token_sale_program_address).to_string());
         invoke_signed(
-            &transfer_solr_to_user_ix,
+            &advance_payment_ix,
             &[
                 token_sale_solr_account.clone(),
                 user_solr_account.clone(),
                 sale_pda.clone(),
                 token_program.clone(),
             ],
-            &[&[&b"solrsale"[..], &[_nonce]]],
+            &[&[&b"solrsale"[..], &[bump]]],
+        )?;
+
+        msg!("Initialize vesting account");
+        let vesting_init_ix = token_vesting::instruction::init(
+            system_program.key,
+            rent.key,
+            vesting_program.key,
+            user_account.key,
+            vesting_account.key,
+            vesting_seed,
+            number_of_vesting_schedules as u32,
+        )?;
+        invoke(
+            &vesting_init_ix,
+            &[
+                system_program.clone(),
+                rent.clone(),
+                vesting_program.clone(),
+                user_account.clone(),
+                vesting_account.clone(),
+            ],
+        )?;
+
+        msg!("Create vesting schedule and transfer tokens to vesting");
+        let vesting_create_ix = token_vesting::instruction::create(
+            vesting_program.key,
+            token_program.key,
+            vesting_account.key,
+            vesting_token_account.key,
+            &token_sale_program_address,
+            token_sale_solr_account.key,
+            user_solr_account.key,
+            &token_sale_solr_account_info.mint,
+            vesting_schedule,
+            vesting_seed,
+        )?;
+        invoke_signed(
+            &vesting_create_ix,
+            &[
+                token_program.clone(),
+                vesting_account.clone(),
+                vesting_token_account.clone(),
+                sale_pda.clone(),
+                token_sale_solr_account.clone(),
+            ],
+            &[&[&b"solrsale"[..], &[bump]]],
         )?;
 
         // Update token whitelist data after successful purchase
@@ -459,6 +564,22 @@ impl Processor {
         Ok(())
     }
 
+    fn find_vesting_seed(
+        token_sale_program_id: &Pubkey,
+        user: &Pubkey,
+        token_sale: &Pubkey,
+        vesting_program_id: &Pubkey,
+    ) -> ([u8; 32], Pubkey) {
+        let (vesting_seed, _) = Pubkey::find_program_address(
+            &[token_sale.as_ref(), user.as_ref()],
+            token_sale_program_id,
+        );
+        let mut vesting_seed = vesting_seed.to_bytes();
+        let (vesting_account_key, nonce) =
+            Pubkey::find_program_address(&[&vesting_seed[..31]], vesting_program_id);
+        vesting_seed[31] = nonce;
+        (vesting_seed, vesting_account_key)
+    }
     /// Processes [PauseTokenSale](enum.TokenSaleInstruction.html) instruction
     fn process_pause_sale(
         accounts: &[AccountInfo],

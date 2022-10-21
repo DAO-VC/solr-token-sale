@@ -154,10 +154,7 @@ pub fn unpack_schedule(input: &[u8]) -> Result<Vec<u64>, ProgramError> {
     Ok(output)
 }
 
-pub fn pack_schedule_into_slice(
-    schedule: Vec<u64>,
-    target: &mut [u8],
-) -> Result<(), ProgramError> {
+pub fn pack_schedule_into_slice(schedule: Vec<u64>, target: &mut [u8]) -> Result<(), ProgramError> {
     for (idx, release_time) in schedule.iter().enumerate() {
         target
             .get_mut(idx * 8..idx * 8 + 8)
