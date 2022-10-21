@@ -14,6 +14,7 @@ use solana_program::{
 use spl_token::state::Account as TokenAccount;
 use solr_token_whitelist::state::TokenWhitelist as TokenWhitelist;
 use crate::{error::TokenSaleError, instruction::TokenSaleInstruction, state::TokenSale};
+use crate::state::pack_schedules_into_slice;
 
 pub struct Processor;
 impl Processor {
@@ -30,7 +31,9 @@ impl Processor {
                 usd_min_amount,
                 usd_max_amount,
                 token_sale_price,
-                token_sale_time
+                token_sale_time,
+                initial_fraction,
+                release_schedule,
             } => {
                 msg!("Instruction: InitTokenSale");
                 Self::process_init_sale(
@@ -40,6 +43,8 @@ impl Processor {
                     usd_max_amount,
                     token_sale_price,
                     token_sale_time,
+                    initial_fraction,
+                    release_schedule,
                     program_id
                 )
             }
@@ -91,8 +96,15 @@ impl Processor {
         usd_max_amount: u64,
         token_sale_price: u64,
         token_sale_time: u64,
+        initial_fraction: u16,
+        release_schedule: Vec<u64>,
         program_id: &Pubkey,
     ) -> ProgramResult {
+        if initial_fraction > 10000 {
+            msg!("invalid initial fraction, it should be less than 10000");
+            return Err(ProgramError::InvalidAccountData);
+        }
+
         let account_info_iter = &mut accounts.iter();
 
         let pool_account = next_account_info(account_info_iter)?;
@@ -101,6 +113,11 @@ impl Processor {
         }
 
         let token_sale_account = next_account_info(account_info_iter)?;
+        let state_size = TokenSale::LEN + release_schedule.len() * 8;
+        if token_sale_account.data_len() != state_size {
+            msg!("Invalid token sale account size for given release schedule");
+            return Err(ProgramError::InvalidAccountData);
+        }
 
         let pool_usdt_account = next_account_info(account_info_iter)?;
         let token_sale_solr_account = next_account_info(account_info_iter)?;
@@ -120,12 +137,12 @@ impl Processor {
         }
 
         let sysvar_rent_pubkey = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
-        if !sysvar_rent_pubkey.is_exempt(token_sale_account.lamports(), token_sale_account.data_len()) {
+        if !sysvar_rent_pubkey.is_exempt(token_sale_account.lamports(), state_size) {
             msg!("SOLR_ERROR_1: token sale account must be rent exempt");
             return Err(TokenSaleError::NotRentExempt.into());
         }
 
-        let mut token_sale_state = TokenSale::unpack_unchecked(&token_sale_account.data.borrow())?;
+        let mut token_sale_state = TokenSale::unpack_unchecked(&token_sale_account.data.borrow()[..TokenSale::LEN])?;
         if token_sale_state.is_initialized() {
             msg!("token sale already initialized");
             return Err(ProgramError::AccountAlreadyInitialized);
@@ -162,10 +179,12 @@ impl Processor {
         token_sale_state.usd_max_amount = usd_max_amount;
         token_sale_state.token_sale_price = token_sale_price;
         token_sale_state.token_sale_time = token_sale_time;
+        token_sale_state.initial_fraction = initial_fraction;
         token_sale_state.token_sale_paused = false;
         token_sale_state.token_sale_ended = false;
         
-        TokenSale::pack(token_sale_state, &mut token_sale_account.data.borrow_mut())?;
+        TokenSale::pack(token_sale_state, &mut token_sale_account.data.borrow_mut()[..TokenSale::LEN])?;
+        pack_schedules_into_slice(release_schedule, &mut token_sale_account.data.borrow_mut()[TokenSale::LEN..])?;
 
         Ok(())
     }
@@ -382,6 +401,7 @@ impl Processor {
             ],
         )?;
 
+        // TODO: Create vesting and fund it with the tokens
         // Transfer SOLR to the user
         msg!("Transfer SOLR to the user");
         let (token_sale_program_address, _nonce) = Pubkey::find_program_address(&[b"solrsale"], program_id);

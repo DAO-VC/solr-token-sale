@@ -18,6 +18,7 @@ pub struct TokenSale {
     pub usd_max_amount: u64,
     pub token_sale_price: u64,
     pub token_sale_time: u64,
+    pub initial_fraction: u16,
     pub token_sale_paused: bool,
     pub token_sale_ended: bool,
 }
@@ -31,7 +32,7 @@ impl IsInitialized for TokenSale {
 }
 
 impl Pack for TokenSale {
-    const LEN: usize = 203;
+    const LEN: usize = 205;
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let src = array_ref![src, 0, TokenSale::LEN];
         let (
@@ -46,9 +47,10 @@ impl Pack for TokenSale {
             usd_max_amount,
             token_sale_price,
             token_sale_time,
+            initial_fraction,
             token_sale_paused,
             token_sale_ended,
-        ) = array_refs![src, 1, 32, 32, 32, 32, 32, 8, 8, 8, 8, 8, 1, 1];
+        ) = array_refs![src, 1, 32, 32, 32, 32, 32, 8, 8, 8, 8, 8, 2, 1, 1];
 
         Ok(TokenSale {
             is_initialized: match is_initialized {
@@ -66,6 +68,10 @@ impl Pack for TokenSale {
             usd_max_amount: u64::from_le_bytes(*usd_max_amount),
             token_sale_price: u64::from_le_bytes(*token_sale_price),
             token_sale_time: u64::from_le_bytes(*token_sale_time),
+            initial_fraction: match u16::from_le_bytes(*initial_fraction) {
+                base_points if base_points <= 10000 => base_points,
+                _ => return Err(ProgramError::InvalidAccountData),
+            },
             token_sale_paused: match token_sale_paused {
                 [0] => false,
                 [1] => true,
@@ -93,9 +99,10 @@ impl Pack for TokenSale {
             usd_max_amount_dst,
             token_sale_price_dst,
             token_sale_time_dst,
+            initial_fraction_dst,
             token_sale_paused_dst,
             token_sale_ended_dst,
-        ) = mut_array_refs![dst, 1, 32, 32, 32, 32, 32, 8, 8, 8, 8, 8, 1, 1];
+        ) = mut_array_refs![dst, 1, 32, 32, 32, 32, 32, 8, 8, 8, 8, 8, 2, 1, 1];
 
         let TokenSale {
             is_initialized,
@@ -109,6 +116,7 @@ impl Pack for TokenSale {
             usd_max_amount,
             token_sale_price,
             token_sale_time,
+            initial_fraction,
             token_sale_paused,
             token_sale_ended,
         } = self;
@@ -124,7 +132,39 @@ impl Pack for TokenSale {
         *usd_max_amount_dst = usd_max_amount.to_le_bytes();
         *token_sale_price_dst = token_sale_price.to_le_bytes();
         *token_sale_time_dst = token_sale_time.to_le_bytes();
+        *initial_fraction_dst = (*initial_fraction).to_le_bytes();
         token_sale_paused_dst[0] = *token_sale_paused as u8;
         token_sale_ended_dst[0] = *token_sale_ended as u8;
     }
+}
+
+pub fn unpack_schedules(input: &[u8]) -> Result<Vec<u64>, ProgramError> {
+    let len = input.len() / 8;
+    let mut output: Vec<u64> = Vec::with_capacity(len);
+
+    for idx in 0..len {
+        let release_time = input
+            .get(idx * 8..idx * 8 + 8)
+            .and_then(|slice| slice.try_into().ok())
+            .map(u64::from_le_bytes)
+            .ok_or(ProgramError::InvalidAccountData)?;
+        output.push(release_time);
+    }
+
+    Ok(output)
+}
+
+pub fn pack_schedules_into_slice(
+    schedules: Vec<u64>,
+    target: &mut [u8],
+) -> Result<(), ProgramError> {
+    for (idx, release_time) in schedules.iter().enumerate() {
+        target
+            .get_mut(idx * 8..idx * 8 + 8)
+            .map(|slice| {
+                slice.copy_from_slice(&release_time.to_le_bytes());
+            })
+            .ok_or(ProgramError::InvalidInstructionData)?;
+    }
+    Ok(())
 }

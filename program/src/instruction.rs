@@ -22,10 +22,12 @@ pub enum TokenSaleInstruction {
     /// 7. `[]` SYSVAR_RENT_PUBKEY
     InitTokenSale {
         token_sale_amount: u64, // amount of tokens for sale, to be deposited into sale
-        usd_min_amount: u64, // minimum purchase amount in usd
-        usd_max_amount: u64, // maximum purchase amount in usd
-        token_sale_price: u64, // token sale price (multiplied by 100 for easy arithmetic)
-        token_sale_time: u64, // time when token sale goes live
+        usd_min_amount: u64,    // minimum purchase amount in usd
+        usd_max_amount: u64,    // maximum purchase amount in usd
+        token_sale_price: u64,  // token sale price (multiplied by 100 for easy arithmetic)
+        token_sale_time: u64,   // time when token sale goes live
+        initial_fraction: u16, // initial fraction of tokens to be released in base points (10000 = 100%)
+        release_schedule: Vec<u64>, // release schedule, rest of tokens to be released equally over time
     },
 
     /// Instruction to fund token sale account with tokens
@@ -49,7 +51,7 @@ pub enum TokenSaleInstruction {
     /// 0. `[signer]` The account buying from the sale
     /// 1. `[]` Account holding sale init info
     /// 2. `[writable]` Sale token account containing tokens for sale
-    /// 3. `[writable]` User token account for receiving tokens purchased
+    /// 3. `[writable]` User token account for receiving tokens purchased <----
     /// 4. `[writable]` User token account for sending funds
     /// 5. `[writable]` Pool token account for receiving user funds
     /// 6. `[]` The Sale program derived address
@@ -57,6 +59,19 @@ pub enum TokenSaleInstruction {
     /// 8. `[]` Account holding token whitelist map
     /// 9. `[writable]` Account holding token whitelist info
     /// 10. `[]` The token whitelist program
+    ///
+    /// Vesting::Init
+    /// 0. `[]` The system program account
+    /// 1. `[]` The sysvar Rent account
+    /// 1. `[signer]` The fee payer account
+    /// 1. `[]` The vesting account
+    ///
+    /// Vesting::Create
+    /// 0. `[]` The spl-token program account
+    /// 1. `[writable]` The vesting account
+    /// 2. `[writable]` The vesting spl-token account
+    /// 3. `[signer]` The source spl-token account owner
+    /// 4. `[writable]` The source spl-token account
     ExecuteTokenSale {
         usd_amount: u64, // purchase amount in usd
     },
@@ -124,12 +139,32 @@ impl TokenSaleInstruction {
                     .map(u64::from_le_bytes)
                     .ok_or(InvalidInstruction)?;
 
-                let (token_sale_time, _rest) = rest.split_at(8);
+                let (token_sale_time, rest) = rest.split_at(8);
                 let token_sale_time = token_sale_time
                     .try_into()
                     .ok()
                     .map(u64::from_le_bytes)
                     .ok_or(InvalidInstruction)?;
+
+                let (initial_fraction, rest) = rest.split_at(2);
+                let initial_fraction = initial_fraction
+                    .try_into()
+                    .ok()
+                    .map(u16::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+
+                let len = rest.len() / 8;
+                let mut release_schedule = Vec::with_capacity(len);
+                let mut offset = 0;
+                for _ in 0..len {
+                    let release_time = rest
+                        .get(offset..offset + 8)
+                        .and_then(|slice| slice.try_into().ok())
+                        .map(u64::from_le_bytes)
+                        .ok_or(InvalidInstruction)?;
+                    offset += 8;
+                    release_schedule.push(release_time);
+                }
                     
                 Self::InitTokenSale {
                     token_sale_amount,
@@ -137,6 +172,8 @@ impl TokenSaleInstruction {
                     usd_max_amount,
                     token_sale_price,
                     token_sale_time,
+                    initial_fraction,
+                    release_schedule,
                 }
             },
             1 => {
@@ -182,6 +219,8 @@ impl TokenSaleInstruction {
                 usd_max_amount,
                 token_sale_price,
                 token_sale_time,
+                initial_fraction,
+                ref release_schedule,
             } => {
                 buf.push(0);
                 buf.extend_from_slice(&token_sale_amount.to_le_bytes());
@@ -189,6 +228,10 @@ impl TokenSaleInstruction {
                 buf.extend_from_slice(&usd_max_amount.to_le_bytes());
                 buf.extend_from_slice(&token_sale_price.to_le_bytes());
                 buf.extend_from_slice(&token_sale_time.to_le_bytes());
+                buf.extend_from_slice(&initial_fraction.to_le_bytes());
+                for s in release_schedule.iter() {
+                    buf.extend_from_slice(&s.to_le_bytes());
+                }
             }
             Self::FundTokenSale { token_sale_amount } => {
                 buf.push(1);
@@ -223,12 +266,17 @@ mod tests {
         let max_amount: u64 = 500;
         let price: u64 = 10;
         let timestamp: u64 = 123456789;
+        let initial_fraction: u16 = 6000;
+        let release_schedule: Vec<u64> = vec![1, 2];
+
         let check = TokenSaleInstruction::InitTokenSale {
             token_sale_amount: sale_amount,
             usd_min_amount: min_amount,
             usd_max_amount: max_amount,
             token_sale_price: price,
             token_sale_time: timestamp,
+            initial_fraction,
+            release_schedule: release_schedule.clone(),
         };
         let packed = check.pack();
         let mut expect = vec![0];
@@ -237,6 +285,10 @@ mod tests {
         expect.extend_from_slice(&max_amount.to_le_bytes());
         expect.extend_from_slice(&price.to_le_bytes());
         expect.extend_from_slice(&timestamp.to_le_bytes());
+        expect.extend_from_slice(&initial_fraction.to_le_bytes());
+        for s in release_schedule.iter() {
+            expect.extend_from_slice(&s.to_le_bytes());
+        }
         assert_eq!(packed, expect);
         let unpacked = TokenSaleInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
