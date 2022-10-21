@@ -48,30 +48,24 @@ pub enum TokenSaleInstruction {
     ///
     /// Accounts expected by ExecuteTokenSale
     ///
-    /// 0. `[signer]` The account buying from the sale
+    /// 0. `[signer]` The account buying from the sale (fee-payer)
     /// 1. `[]` Account holding sale init info
-    /// 2. `[writable]` Sale token account containing tokens for sale
-    /// 3. `[writable]` User token account for receiving tokens purchased <----
+    /// 2. `[writable]` Sale token account containing tokens for sale (source token account for vesting)
+    /// 3. `[writable]` User token account for receiving tokens purchased (destination token account for vesting)
     /// 4. `[writable]` User token account for sending funds
     /// 5. `[writable]` Pool token account for receiving user funds
-    /// 6. `[]` The Sale program derived address
+    /// 6. `[]` The Sale program derived address (the source token account owner)
     /// 7. `[]` The token program
     /// 8. `[]` Account holding token whitelist map
     /// 9. `[writable]` Account holding token whitelist info
     /// 10. `[]` The token whitelist program
     ///
-    /// Vesting::Init
-    /// 0. `[]` The system program account
-    /// 1. `[]` The sysvar Rent account
-    /// 1. `[signer]` The fee payer account
-    /// 1. `[]` The vesting account
-    ///
-    /// Vesting::Create
-    /// 0. `[]` The spl-token program account
-    /// 1. `[writable]` The vesting account
-    /// 2. `[writable]` The vesting spl-token account
-    /// 3. `[signer]` The source spl-token account owner
-    /// 4. `[writable]` The source spl-token account
+    /// Vesting accounts:
+    /// 11. `[]` The system program account
+    /// 12. `[]` The sysvar Rent account
+    /// 13. `[writable]` The vesting account (pda from fee-payer)
+    /// 14. `[writable]` The vesting spl-token account
+    /// 15. `[]` The vesting program account
     ExecuteTokenSale {
         usd_amount: u64, // purchase amount in usd
     },

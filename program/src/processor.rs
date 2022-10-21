@@ -14,7 +14,7 @@ use solana_program::{
 use spl_token::state::Account as TokenAccount;
 use solr_token_whitelist::state::TokenWhitelist as TokenWhitelist;
 use crate::{error::TokenSaleError, instruction::TokenSaleInstruction, state::TokenSale};
-use crate::state::pack_schedules_into_slice;
+use crate::state::{pack_schedule_into_slice, unpack_schedule};
 
 pub struct Processor;
 impl Processor {
@@ -184,7 +184,7 @@ impl Processor {
         token_sale_state.token_sale_ended = false;
         
         TokenSale::pack(token_sale_state, &mut token_sale_account.data.borrow_mut()[..TokenSale::LEN])?;
-        pack_schedules_into_slice(release_schedule, &mut token_sale_account.data.borrow_mut()[TokenSale::LEN..])?;
+        pack_schedule_into_slice(release_schedule, &mut token_sale_account.data.borrow_mut()[TokenSale::LEN..])?;
 
         Ok(())
     }
@@ -216,7 +216,7 @@ impl Processor {
         }
 
         // check if token sale can be funded
-        let token_sale_state = TokenSale::unpack(&token_sale_account.data.borrow())?;
+        let token_sale_state = TokenSale::unpack(&token_sale_account.data.borrow()[..TokenSale::LEN])?;
         let token_sale_solr_account_info = TokenAccount::unpack(&token_sale_solr_account.data.borrow())?;
         if !token_sale_state.is_initialized() {
             msg!("SOLR_ERROR_3: token sale needs to be initialized before funding");
@@ -285,8 +285,17 @@ impl Processor {
         let token_whitelist_map = next_account_info(account_info_iter)?;
         let token_whitelist_account = next_account_info(account_info_iter)?;
         let token_whitelist_program = next_account_info(account_info_iter)?;
-        
-        let token_sale_state = TokenSale::unpack(&token_sale_account.data.borrow())?;
+
+        // Vesting accounts
+        let system_program = next_account_info(account_info_iter)?;
+        let rent = next_account_info(account_info_iter)?;
+        let vesting_account = next_account_info(account_info_iter)?;
+        let vesting_token_account = next_account_info(account_info_iter)?;
+        let vesting_program = next_account_info(account_info_iter)?;
+
+        let token_sale_state = TokenSale::unpack(&token_sale_account.data.borrow()[..TokenSale::LEN])?;
+        let schedule = unpack_schedule(&token_sale_account.data.borrow()[TokenSale::LEN..])?;
+
         let token_sale_solr_account_info = TokenAccount::unpack(&token_sale_solr_account.data.borrow())?;
         let mut token_whitelist_map_state = TokenWhitelist::unpack_from_slice(&token_whitelist_map.data.borrow())?;
         let mut token_whitelist_account_state = TokenWhitelist::unpack_from_slice(&token_whitelist_account.data.borrow())?;
@@ -465,7 +474,7 @@ impl Processor {
         let token_sale_account = next_account_info(account_info_iter)?;
 
         // check if token sale can be paused
-        let mut token_sale_state = TokenSale::unpack(&token_sale_account.data.borrow())?;
+        let mut token_sale_state = TokenSale::unpack(&token_sale_account.data.borrow()[..TokenSale::LEN])?;
         if token_sale_state.init_pubkey != *init_account.key {
             msg!("invalid signer");
             msg!(&token_sale_state.init_pubkey.to_string());
@@ -480,7 +489,7 @@ impl Processor {
         // pause the sale
         token_sale_state.token_sale_paused = true;
         
-        TokenSale::pack(token_sale_state, &mut token_sale_account.data.borrow_mut())?;
+        TokenSale::pack(token_sale_state, &mut token_sale_account.data.borrow_mut()[..TokenSale::LEN])?;
 
         Ok(())
     }
@@ -500,7 +509,7 @@ impl Processor {
         let token_sale_account = next_account_info(account_info_iter)?;
 
         // check if token sale can be resumed
-        let mut token_sale_state = TokenSale::unpack(&token_sale_account.data.borrow())?;
+        let mut token_sale_state = TokenSale::unpack(&token_sale_account.data.borrow()[..TokenSale::LEN])?;
         if token_sale_state.init_pubkey != *init_account.key {
             msg!("invalid signer");
             msg!(&token_sale_state.init_pubkey.to_string());
@@ -515,7 +524,7 @@ impl Processor {
         // resume the sale
         token_sale_state.token_sale_paused = false;
         
-        TokenSale::pack(token_sale_state, &mut token_sale_account.data.borrow_mut())?;
+        TokenSale::pack(token_sale_state, &mut token_sale_account.data.borrow_mut()[..TokenSale::LEN])?;
 
         Ok(())
     }
@@ -535,7 +544,7 @@ impl Processor {
         let token_sale_account = next_account_info(account_info_iter)?;
 
         // check if token sale can be ended
-        let mut token_sale_state = TokenSale::unpack(&token_sale_account.data.borrow())?;
+        let mut token_sale_state = TokenSale::unpack(&token_sale_account.data.borrow()[..TokenSale::LEN])?;
         if token_sale_state.init_pubkey != *init_account.key {
             msg!("invalid signer");
             msg!(&token_sale_state.init_pubkey.to_string());
@@ -550,7 +559,7 @@ impl Processor {
         // end the sale (can't be resumed once ended)
         token_sale_state.token_sale_ended = true;
         
-        TokenSale::pack(token_sale_state, &mut token_sale_account.data.borrow_mut())?;
+        TokenSale::pack(token_sale_state, &mut token_sale_account.data.borrow_mut()[..TokenSale::LEN])?;
 
         Ok(())
     }

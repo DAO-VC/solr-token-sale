@@ -1092,6 +1092,7 @@ dependencies = [
  "solr-token-whitelist",
  "spl-token",
  "thiserror",
+ "token-vesting",
 ]
 
 [[package]]
@@ -1107,6 +1108,17 @@ dependencies = [
  "solana-program",
  "spl-token",
  "thiserror",
+]
+
+[[package]]
+name = "spl-associated-token-account"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b013067447a1396303ddfc294f36e3d260a32f8a16c501c295bcdc7de39b490"
+dependencies = [
+ "borsh",
+ "solana-program",
+ "spl-token",
 ]
 
 [[package]]
@@ -1206,6 +1218,20 @@ name = "tinyvec_macros"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
+
+[[package]]
+name = "token-vesting"
+version = "0.1.0"
+source = "git+https://github.com/Bonfida/token-vesting#d77b22dad5924722cac9504f67e51ffc280dbf01"
+dependencies = [
+ "arrayref",
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "spl-associated-token-account",
+ "spl-token",
+ "thiserror",
+]
 
 [[package]]
 name = "toml"
