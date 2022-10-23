@@ -115,7 +115,7 @@ impl Processor {
         }
 
         let token_sale_account = next_account_info(account_info_iter)?;
-        let state_size = TokenSale::LEN + release_schedule.len() * 8;
+        let state_size = TokenSale::LEN + 4 + release_schedule.len() * 8;
         if token_sale_account.data_len() != state_size {
             msg!("Invalid token sale account size for given release schedule");
             return Err(ProgramError::InvalidAccountData);
@@ -137,6 +137,8 @@ impl Processor {
             msg!("token whitelist map is not owned by token whitelist program");
             return Err(ProgramError::InvalidAccountData);
         }
+
+        let vesting_program = next_account_info(account_info_iter)?;
 
         let sysvar_rent_pubkey = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
         if !sysvar_rent_pubkey.is_exempt(token_sale_account.lamports(), state_size) {
@@ -177,6 +179,7 @@ impl Processor {
         token_sale_state.pool_token_account_pubkey = *pool_usdt_account.key;
         token_sale_state.whitelist_map_pubkey = *token_whitelist_map.key;
         token_sale_state.whitelist_program_pubkey = *token_whitelist_program.key;
+        token_sale_state.vesting_program_pubkey = *vesting_program.key;
         token_sale_state.token_sale_amount = token_sale_amount;
         token_sale_state.usd_min_amount = usd_min_amount;
         token_sale_state.usd_max_amount = usd_max_amount;
@@ -322,7 +325,7 @@ impl Processor {
         }
 
         // check vesting program pubkey, other vesting accounts will be checked by the vesting program
-        if vesting_program.key != &pubkey!("CChTq6PthWU82YZkbveA3WDf7s97BWhBK4Vx9bmsT743") {
+        if vesting_program.key != token_sale_state.vesting_program_pubkey {
             msg!("invalid vesting program");
             msg!(&vesting_program.key.to_string());
             return Err(ProgramError::InvalidAccountData);

@@ -19,7 +19,8 @@ pub enum TokenSaleInstruction {
     /// 4. `[]` Account holding token whitelist info
     /// 5. `[]` The token program
     /// 6. `[]` The token whitelist program
-    /// 7. `[]` SYSVAR_RENT_PUBKEY
+    /// 7. `[]` The vesting program
+    /// 8. `[]` SYSVAR_RENT_PUBKEY
     InitTokenSale {
         token_sale_amount: u64, // amount of tokens for sale, to be deposited into sale
         usd_min_amount: u64,    // minimum purchase amount in usd
