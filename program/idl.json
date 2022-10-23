@@ -98,7 +98,7 @@
           "isSigner": false
         },
         {
-          "name": "poolToken",
+          "name": "srcToken",
           "isMut": true,
           "isSigner": false
         },
