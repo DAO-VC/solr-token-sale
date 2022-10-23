@@ -10,7 +10,6 @@ use solana_program::{
     program::{invoke, invoke_signed},
     program_error::{PrintProgramError, ProgramError},
     program_pack::{IsInitialized, Pack},
-    pubkey,
     pubkey::Pubkey,
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
@@ -325,7 +324,7 @@ impl Processor {
         }
 
         // check vesting program pubkey, other vesting accounts will be checked by the vesting program
-        if vesting_program.key != token_sale_state.vesting_program_pubkey {
+        if token_sale_state.vesting_program_pubkey != *vesting_program.key {
             msg!("invalid vesting program");
             msg!(&vesting_program.key.to_string());
             return Err(ProgramError::InvalidAccountData);
@@ -338,7 +337,7 @@ impl Processor {
             vesting_program.key,
         );
 
-        if vesting_account.key != &vesting_account_key {
+        if vesting_account_key != *vesting_account.key {
             msg!("invalid vesting account");
             msg!(
                 "vesting seed {}",
