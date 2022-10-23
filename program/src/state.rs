@@ -139,10 +139,16 @@ impl Pack for TokenSale {
 }
 
 pub fn unpack_schedule(input: &[u8]) -> Result<Vec<u64>, ProgramError> {
-    let len = input.len() / 8;
-    let mut output: Vec<u64> = Vec::with_capacity(len);
+    let (schedule_len, input) = input.split_at(4);
+    let schedule_len = schedule_len
+        .try_into()
+        .ok()
+        .map(u32::from_le_bytes)
+        .ok_or(ProgramError::InvalidAccountData)? as usize;
 
-    for idx in 0..len {
+    let mut output: Vec<u64> = Vec::with_capacity(schedule_len);
+
+    for idx in 0..schedule_len {
         let release_time = input
             .get(idx * 8..idx * 8 + 8)
             .and_then(|slice| slice.try_into().ok())
@@ -155,6 +161,9 @@ pub fn unpack_schedule(input: &[u8]) -> Result<Vec<u64>, ProgramError> {
 }
 
 pub fn pack_schedule_into_slice(schedule: Vec<u64>, target: &mut [u8]) -> Result<(), ProgramError> {
+    let (schedule_len_dst, target) = target.split_at_mut(4);
+    schedule_len_dst.copy_from_slice(&(schedule.len() as u32).to_le_bytes());
+
     for (idx, release_time) in schedule.iter().enumerate() {
         target
             .get_mut(idx * 8..idx * 8 + 8)

@@ -147,19 +147,23 @@ impl TokenSaleInstruction {
                     .map(u16::from_le_bytes)
                     .ok_or(InvalidInstruction)?;
 
-                let len = rest.len() / 8;
-                let mut release_schedule = Vec::with_capacity(len);
-                let mut offset = 0;
-                for _ in 0..len {
+                let (release_schedule_len, rest) = rest.split_at(4);
+                let release_schedule_len = release_schedule_len
+                    .try_into()
+                    .ok()
+                    .map(u32::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+
+                let mut release_schedule = Vec::with_capacity(release_schedule_len as usize);
+                for idx in 0..release_schedule_len as usize {
                     let release_time = rest
-                        .get(offset..offset + 8)
+                        .get(idx * 8..idx * 8 + 8)
                         .and_then(|slice| slice.try_into().ok())
                         .map(u64::from_le_bytes)
                         .ok_or(InvalidInstruction)?;
-                    offset += 8;
                     release_schedule.push(release_time);
                 }
-                    
+
                 Self::InitTokenSale {
                     token_sale_amount,
                     usd_min_amount,
@@ -223,6 +227,7 @@ impl TokenSaleInstruction {
                 buf.extend_from_slice(&token_sale_price.to_le_bytes());
                 buf.extend_from_slice(&token_sale_time.to_le_bytes());
                 buf.extend_from_slice(&initial_fraction.to_le_bytes());
+                buf.extend_from_slice(&(release_schedule.len() as u32).to_le_bytes());
                 for s in release_schedule.iter() {
                     buf.extend_from_slice(&s.to_le_bytes());
                 }
@@ -280,6 +285,7 @@ mod tests {
         expect.extend_from_slice(&price.to_le_bytes());
         expect.extend_from_slice(&timestamp.to_le_bytes());
         expect.extend_from_slice(&initial_fraction.to_le_bytes());
+        expect.extend_from_slice(&(release_schedule.len() as u32).to_le_bytes());
         for s in release_schedule.iter() {
             expect.extend_from_slice(&s.to_le_bytes());
         }
