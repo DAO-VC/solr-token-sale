@@ -11,6 +11,7 @@
 
 ```bash
 $ cargo build-bpf
+$ yarn install
 ```
 
 ## Test
